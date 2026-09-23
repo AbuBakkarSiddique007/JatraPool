@@ -4,6 +4,8 @@ import { StatusCodes } from "http-status-codes";
 import { prisma } from "../../shared/database/prisma.js";
 import { AppError } from "../../shared/errors/app.error.js";
 import { validateTransition } from "../pools/pools.state.js";
+import { POOL_STATUS_EVENT, RIDE_STATUS_EVENT } from "../events/events.interface.js";
+import { EventsService } from "../events/events.service.js";
 
 const findDriver = async (driverId: string) => {
   const driver = await prisma.user.findUnique({ where: { id: driverId } });
@@ -89,7 +91,7 @@ const advancePool = async (poolId: string, driverId: string) => {
     throw new AppError(StatusCodes.CONFLICT, "Pool has no rides to advance");
   }
 
-  return prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx) => {
     const rides = await tx.rideRequest.findMany({
       where: { id: { in: pool.memberships.map((membership) => membership.rideRequestId) } },
     });
@@ -156,6 +158,21 @@ const advancePool = async (poolId: string, driverId: string) => {
 
     return { pool: updatedPool, rides: advancedRides };
   });
+
+  for (const ride of result.rides) {
+    EventsService.broadcast(ride.passengerId, RIDE_STATUS_EVENT, {
+      rideId: ride.id,
+      status: ride.status,
+      finalFarePoysha: ride.finalFarePoysha ?? undefined,
+    });
+  }
+  EventsService.broadcast(driverId, POOL_STATUS_EVENT, {
+    poolId,
+    status: result.pool.status,
+    occupiedSeats: result.pool.occupiedSeats,
+  });
+
+  return result;
 };
 
 export const DriverService = {

@@ -9,6 +9,12 @@ import { getCorridorForRoute } from "../pools/pools.matcher.js";
 import { PoolsService } from "../pools/pools.service.js";
 import { assertCanCancel, validateTransition } from "../pools/pools.state.js";
 import {
+  RIDE_CANCELLED_EVENT,
+  RIDE_MATCHED_EVENT,
+  POOL_STATUS_EVENT,
+} from "../events/events.interface.js";
+import { EventsService } from "../events/events.service.js";
+import {
   CreateRideRequestInput,
   EstimateInput,
   EstimateResult,
@@ -78,7 +84,7 @@ const requestRide = async (payload: CreateRideRequestInput, passengerId: string)
   const pickup = DHAKA_ZONES[pickupZone];
   const dropoff = DHAKA_ZONES[dropoffZone];
 
-  return prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx) => {
     // Serialize concurrent requests for the same driver so the pool find-or-create cannot race.
     await tx.$queryRaw`SELECT "id" FROM "User" WHERE "id" = ${vehicle.driverId} FOR UPDATE`;
 
@@ -144,6 +150,21 @@ const requestRide = async (payload: CreateRideRequestInput, passengerId: string)
 
     return { ride: matchedRide, pool: updatedPool };
   });
+
+  EventsService.broadcast(passengerId, RIDE_MATCHED_EVENT, {
+    rideId: result.ride.id,
+    status: result.ride.status,
+    poolId: result.pool?.id,
+    corridorName: result.pool?.corridorName,
+  });
+  EventsService.broadcast(vehicle.driverId, POOL_STATUS_EVENT, {
+    poolId: result.pool?.id,
+    status: result.pool?.status,
+    corridorName: result.pool?.corridorName,
+    occupiedSeats: result.pool?.occupiedSeats,
+  });
+
+  return result;
 };
 
 const getStatus = async (rideId: string, passengerId: string): Promise<RideStatusResult> => {
@@ -199,7 +220,7 @@ const cancelRide = async (rideId: string, passengerId: string) => {
 
   assertCanCancel(ride.status);
 
-  return prisma.$transaction(async (tx) => {
+  const cancelledRide = await prisma.$transaction(async (tx) => {
     const membership = await tx.poolMembership.findUnique({ where: { rideRequestId: ride.id } });
 
     if (membership) {
@@ -226,6 +247,13 @@ const cancelRide = async (rideId: string, passengerId: string) => {
 
     return cancelledRide;
   });
+
+  EventsService.broadcast(passengerId, RIDE_CANCELLED_EVENT, {
+    rideId,
+    status: cancelledRide.status,
+  });
+
+  return cancelledRide;
 };
 
 const getHistory = async (passengerId: string): Promise<RideWithPool[]> =>
