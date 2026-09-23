@@ -1,7 +1,7 @@
 import express from "express";
 import cors from "cors";
 
-import authRouter from "./modules/auth/auth.route.js";
+import { AuthRoutes } from "./modules/auth/auth.route.js";
 
 const app = express();
 
@@ -13,6 +13,6 @@ app.get("/health", (req, res) => {
   res.status(200).json({ status: "ok", service: "JatraPool Backend API" });
 });
 
-app.use("/api/auth", authRouter);
+app.use("/api/auth", AuthRoutes);
 
 export default app;

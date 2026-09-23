@@ -4,30 +4,28 @@ import jwt from "jsonwebtoken";
 
 import { envVars } from "../../app/config/env.js";
 import { prisma } from "../../shared/database/prisma.js";
-import { HttpError } from "../../shared/errors/http.error.js";
+import { AppError } from "../../shared/errors/app.error.js";
 import { AuthUserPayload, JwtPayload, PersonaResult } from "./auth.interface.js";
 
 const TOKEN_EXPIRY = "7d";
 
-function toPublicUser(user: User): AuthUserPayload {
-  return {
-    userId: user.id,
-    name: user.name,
-    phone: user.phone,
-    role: user.role,
-  };
-}
+const toPublicUser = (user: User): AuthUserPayload => ({
+  userId: user.id,
+  name: user.name,
+  phone: user.phone,
+  role: user.role,
+});
 
-export async function listPersonas(): Promise<AuthUserPayload[]> {
+const listPersonas = async (): Promise<AuthUserPayload[]> => {
   const users = await prisma.user.findMany({ orderBy: { createdAt: "asc" } });
   return users.map(toPublicUser);
-}
+};
 
-export async function switchPersona(phone: string): Promise<PersonaResult> {
+const switchPersona = async (phone: string): Promise<PersonaResult> => {
   const user = await prisma.user.findUnique({ where: { phone } });
 
   if (!user) {
-    throw new HttpError(StatusCodes.NOT_FOUND, `Persona not found for phone ${phone}`);
+    throw new AppError(StatusCodes.NOT_FOUND, `Persona not found for phone ${phone}`);
   }
 
   const payload: JwtPayload = { userId: user.id, role: user.role };
@@ -37,4 +35,9 @@ export async function switchPersona(phone: string): Promise<PersonaResult> {
     token,
     user: toPublicUser(user),
   };
-}
+};
+
+export const AuthService = {
+  listPersonas,
+  switchPersona,
+};

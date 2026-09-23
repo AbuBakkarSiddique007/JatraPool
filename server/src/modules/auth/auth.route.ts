@@ -1,11 +1,10 @@
 import { Router } from "express";
 
-import { catchAsync } from "../../shared/utils/catchAsync.js";
-import { getPersonas, postPersonaSwitch } from "./auth.controller.js";
+import { AuthController } from "./auth.controller.js";
 
-const authRouter = Router();
+const router = Router();
 
-authRouter.get("/personas", catchAsync(getPersonas));
-authRouter.post("/persona-switch", catchAsync(postPersonaSwitch));
+router.get("/personas", AuthController.getPersonas);
+router.post("/persona-switch", AuthController.postPersonaSwitch);
 
-export default authRouter;
+export const AuthRoutes = router;
