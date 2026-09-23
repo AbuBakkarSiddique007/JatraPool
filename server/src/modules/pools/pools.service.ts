@@ -1,0 +1,60 @@
+import { PoolMembership, PoolStatus } from "@prisma/client";
+import { StatusCodes } from "http-status-codes";
+
+import { prisma } from "../../shared/database/prisma.js";
+import { HttpError } from "../../shared/errors/http.error.js";
+import { AllocateSeatInput } from "./pools.interface.js";
+
+interface PoolLockRow {
+  id: string;
+  status: PoolStatus;
+  occupiedSeats: number;
+  maxCapacity: number;
+}
+
+export async function allocateSeatsToPool(input: AllocateSeatInput): Promise<PoolMembership> {
+  const { poolId, rideRequestId, requestedSeats, individualFarePoysha } = input;
+
+  if (!Number.isInteger(requestedSeats) || requestedSeats <= 0) {
+    throw new HttpError(StatusCodes.BAD_REQUEST, "requestedSeats must be a positive integer");
+  }
+
+  return prisma.$transaction(async (tx) => {
+    const [pool] = await tx.$queryRaw<PoolLockRow[]>`
+      SELECT "id", "status", "occupiedSeats", "maxCapacity"
+      FROM "Pool"
+      WHERE "id" = ${poolId}
+      FOR UPDATE
+    `;
+
+    if (!pool) {
+      throw new HttpError(StatusCodes.NOT_FOUND, `Pool ${poolId} not found`);
+    }
+
+    if (pool.status !== PoolStatus.FORMING && pool.status !== PoolStatus.ACTIVE) {
+      throw new HttpError(StatusCodes.CONFLICT, `Pool is ${pool.status} and no longer accepts seats`);
+    }
+
+    const remainingSeats = pool.maxCapacity - pool.occupiedSeats;
+    if (requestedSeats > remainingSeats) {
+      throw new HttpError(
+        StatusCodes.CONFLICT,
+        `Seat capacity exceeded: only ${remainingSeats} of ${pool.maxCapacity} seats remaining`,
+      );
+    }
+
+    await tx.pool.update({
+      where: { id: poolId },
+      data: { occupiedSeats: { increment: requestedSeats } },
+    });
+
+    return tx.poolMembership.create({
+      data: {
+        poolId,
+        rideRequestId,
+        allocatedSeats: requestedSeats,
+        individualFarePoysha,
+      },
+    });
+  });
+}
