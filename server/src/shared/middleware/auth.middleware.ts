@@ -3,7 +3,7 @@ import { StatusCodes } from "http-status-codes";
 import jwt from "jsonwebtoken";
 
 import { envVars } from "../../app/config/env.js";
-import { HttpError } from "../errors/http.error.js";
+import { AppError } from "../errors/app.error.js";
 import { JwtPayload } from "../../modules/auth/auth.interface.js";
 
 function extractBearerToken(req: Request): string | null {
@@ -18,7 +18,7 @@ export const authenticate: RequestHandler = (req: Request, _res: Response, next:
   const token = extractBearerToken(req);
 
   if (!token) {
-    throw new HttpError(StatusCodes.UNAUTHORIZED, "Missing or malformed Authorization header");
+    throw new AppError(StatusCodes.UNAUTHORIZED, "Missing or malformed Authorization header");
   }
 
   try {
@@ -26,7 +26,7 @@ export const authenticate: RequestHandler = (req: Request, _res: Response, next:
     req.user = { userId: payload.userId, role: payload.role };
     next();
   } catch {
-    throw new HttpError(StatusCodes.UNAUTHORIZED, "Invalid or expired token");
+    throw new AppError(StatusCodes.UNAUTHORIZED, "Invalid or expired token");
   }
 };
 
@@ -36,7 +36,7 @@ export const requireRole =
     const { user } = req;
 
     if (!user || !roles.includes(user.role)) {
-      throw new HttpError(
+      throw new AppError(
         StatusCodes.FORBIDDEN,
         "You do not have permission to access this resource",
       );
