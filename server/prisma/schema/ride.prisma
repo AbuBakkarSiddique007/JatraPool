@@ -1,0 +1,46 @@
+enum RideStatus {
+  REQUESTED
+  MATCHED
+  DRIVER_ARRIVED
+  STARTED
+  COMPLETED
+  CANCELLED
+}
+
+model RideRequest {
+  id                  String          @id @default(uuid())
+  passengerId         String
+  pickupZone          String
+  dropoffZone         String
+  pickupLat           Float
+  pickupLng           Float
+  dropoffLat          Float
+  dropoffLng          Float
+  requestedSeats      Int             @default(1)
+  status              RideStatus      @default(REQUESTED)
+  estimatedFarePoysha Int
+  finalFarePoysha     Int?
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+
+  passenger           User            @relation("PassengerRides", fields: [passengerId], references: [id], onDelete: Cascade)
+  poolMembership      PoolMembership?
+  events              RideEvent[]
+
+  @@index([passengerId])
+  @@index([status, pickupZone])
+}
+
+model RideEvent {
+  id            String      @id @default(uuid())
+  rideRequestId String
+  fromStatus    RideStatus?
+  toStatus      RideStatus
+  triggeredBy   String
+  metadata      Json?
+  createdAt     DateTime    @default(now())
+
+  rideRequest   RideRequest @relation(fields: [rideRequestId], references: [id], onDelete: Cascade)
+
+  @@index([rideRequestId, createdAt])
+}
