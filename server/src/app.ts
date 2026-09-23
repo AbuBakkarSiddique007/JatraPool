@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 
 import { AuthRoutes } from "./modules/auth/auth.route.js";
+import { RidesRoutes } from "./modules/rides/rides.route.js";
 
 const app = express();
 
@@ -14,5 +15,6 @@ app.get("/health", (req, res) => {
 });
 
 app.use("/api/auth", AuthRoutes);
+app.use("/api/rides", RidesRoutes);
 
 export default app;
