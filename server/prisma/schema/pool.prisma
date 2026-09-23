@@ -1,0 +1,41 @@
+enum PoolStatus {
+  FORMING
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+model Pool {
+  id            String           @id @default(uuid())
+  vehicleId     String
+  driverId      String
+  corridorName  String
+  maxCapacity   Int              @default(3)
+  occupiedSeats Int              @default(0)
+  status        PoolStatus       @default(FORMING)
+  startedAt     DateTime?
+  completedAt   DateTime?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  vehicle       Vehicle          @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  driver        User             @relation("DriverPools", fields: [driverId], references: [id], onDelete: Cascade)
+  memberships   PoolMembership[]
+
+  @@index([driverId, status])
+  @@index([status, corridorName])
+}
+
+model PoolMembership {
+  id                   String      @id @default(uuid())
+  poolId               String
+  rideRequestId        String      @unique
+  allocatedSeats       Int         @default(1)
+  individualFarePoysha Int
+  joinedAt             DateTime    @default(now())
+
+  pool                 Pool        @relation(fields: [poolId], references: [id], onDelete: Cascade)
+  rideRequest          RideRequest @relation(fields: [rideRequestId], references: [id], onDelete: Cascade)
+
+  @@index([poolId])
+}
