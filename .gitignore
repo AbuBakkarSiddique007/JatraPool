@@ -1,0 +1,60 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Testing and Coverage
+coverage/
+*.lcov
+.nyc_output
+
+# Production Build
+dist/
+build/
+.next/
+out/
+*.tsbuildinfo
+next-env.d.ts
+
+# Environment Variables & Secrets (CRITICAL: Never commit real secrets)
+.env
+.env*.local
+.env.production
+.env.development
+.env.test
+!.env.example
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.pnpm-debug.log*
+lerna-debug.log*
+
+# Database & Migrations local data
+*.sqlite
+*.sqlite3
+*.db
+*.db-journal
+
+# Operating System & IDE
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Temporary / Cache
+.turbo/
+.eslintcache
+.cache/
+.vercel/
+tmp/
+scratch/
